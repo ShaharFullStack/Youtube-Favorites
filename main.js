@@ -76,7 +76,7 @@ function validate() {
         return false;
     }
     if (!videoLinkBox.value) {
-        alert("Missing animal.");
+        alert("Missing link.");
         videoLinkBox.focus();
         return false;
     }
