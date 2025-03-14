@@ -1,33 +1,445 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <script defer src="main.js"></script>
-    <title>My Favorite Youtube Videos</title>
-</head>
-<body>
-    <h1>My Favorite Youtube Videos</h1>
-    <label>Video Name: </label>
-    <input type="text" id="videoNameBox"><br><br>
-    <label>Video Link: </label>
-    <input type="text" id="videoLinkBox"><br><br>
-    <label>Video Rate : </label>
-    <select name="videoRateBox" id="videoRateBox">
-        <option>1</option>
-        <option>2</option>
-        <option>3</option>
-        <option>4</option>
-        <option>5</option>
-        <option>6</option>
-        <option>7</option>
-        <option>8</option>
-        <option>9</option>
-        <option>10</option>
-    </select><br><br>
-    <button onclick="add()" style="font-size:24px">Add <i class="fa fa-youtube-play"></i> </button>
-    <div id="container"></div>
-</body>
-</html>
+import React, { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+
+const MultiWordParticles = () => {
+  const containerRef = useRef(null);
+  const [currentWord, setCurrentWord] = useState("Shahar");
+  const [interactionMode, setInteractionMode] = useState("automatic");
+
+  useEffect(() => {
+    if (currentWord === "Shahar") {
+      document.title = "Shahar - Particle Animation";
+    } else if (currentWord === "Maoz") {
+      document.title = "Maoz - Particle Animation";
+    } else if (currentWord === "❤️") {
+      document.title = "Heart - Particle Animation";
+    } else if (currentWord === "Spiral") {
+      document.title = "Spiral - Particle Animation";
+    }
+  }, [currentWord]);
+    // Scene setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 5;
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth * 0.8, window.innerHeight * 0.8);
+    renderer.setClearColor(0x000000, 0);
+    
+    if (containerRef.current) {
+      containerRef.current.appendChild(renderer.domElement);
+    }
+
+    // Particles setup
+    const particles = [];
+    const numParticles = 6000;
+    let morphTimeout;
+    
+    // Create initial random particle system
+    const particleGeometry = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(numParticles * 3);
+    
+    for (let i = 0; i < numParticles; i++) {
+      const i3 = i * 3;
+      particlePositions[i3] = (Math.random() - 0.5) * 10;
+      particlePositions[i3 + 1] = (Math.random() - 0.5) * 10;
+      particlePositions[i3 + 2] = (Math.random() - 0.5) * 10;
+      
+      particles.push({
+        x: particlePositions[i3],
+        y: particlePositions[i3 + 1],
+        z: particlePositions[i3 + 2],
+        vx: 0,
+        vy: 0,
+        vz: 0,
+        targetX: 0,
+        targetY: 0,
+        targetZ: 0
+      });
+    }
+    
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    
+    // Create gradient material for particles
+    const particleMaterial = new THREE.PointsMaterial({
+      color: 0x1E90FF,
+      size: 0.05,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      map: createParticleTexture()
+    });
+    
+    function createParticleTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 32;
+      canvas.height = 32;
+      const context = canvas.getContext('2d');
+      
+      // Create radial gradient
+      const gradient = context.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0,
+        canvas.width / 2, canvas.height / 2, canvas.width / 2
+      );
+      
+      gradient.addColorStop(0, 'rgba(255,255,255,1)');
+      gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+      gradient.addColorStop(0.5, 'rgba(200,200,255,0.3)');
+      gradient.addColorStop(1, 'rgba(0,0,50,0)');
+      
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    }
+    
+    // Create particle system
+    const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particleSystem);
+    
+    // Function to create text points
+    const createTextPoints = (text) => {
+      // Create a canvas to render text
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 256;
+      const context = canvas.getContext('2d');
+      
+      // Draw text
+      context.fillStyle = 'white';
+      context.font = 'bold 150px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(text, canvas.width / 2, canvas.height / 2);
+      
+      // Extract points from the text
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const textPoints = [];
+      
+      const skip = 4; // Sample every few pixels
+      for (let y = 0; y < canvas.height; y += skip) {
+        for (let x = 0; x < canvas.width; x += skip) {
+          const i = (y * canvas.width + x) * 4;
+          if (imageData.data[i] > 0) { // If pixel is not transparent
+            // Map canvas coordinates to 3D space
+            const tx = (x / canvas.width - 0.5) * 8;
+            const ty = -(y / canvas.height - 0.5) * 2;
+            textPoints.push({ x: tx, y: ty, z: 0 });
+          }
+        }
+      }
+      
+      return textPoints;
+    };
+    
+    // Create text points for both words
+    const shaharPoints = createTextPoints("Shahar");
+    const maozPoints = createTextPoints("Maoz");
+    
+    // Assign target positions for particles with customized transitions
+    const assignTargets = (textPoints, skipExplosion = false) => {
+      if (!skipExplosion) {
+        // First, scatter particles (create an explosion effect)
+        for (let i = 0; i < numParticles; i++) {
+          const i3 = i * 3;
+          particles[i].targetX = particles[i].x + (Math.random() - 0.5) * 5;
+          particles[i].targetY = particles[i].y + (Math.random() - 0.5) * 5;
+          particles[i].targetZ = particles[i].z + (Math.random() - 0.5) * 5;
+        }
+      }
+      
+      // After short delay, assign new word target positions
+      setTimeout(() => {
+        // Create a vortex effect when going to the spiral
+        if (currentWord === "Spiral") {
+          // Start particles in a tight group and expand to spiral
+          for (let i = 0; i < numParticles; i++) {
+            particles[i].vx += (Math.random() - 0.5) * 0.5;
+            particles[i].vy += (Math.random() - 0.5) * 0.5;
+            particles[i].vz += (Math.random() - 0.5) * 0.5;
+          }
+        }
+        
+        // Handle special heart formation
+        if (currentWord === "❤️") {
+          // Apply pink/red color scheme
+          particleMaterial.color.setRGB(1, 0.2, 0.3);
+        } else if (currentWord !== "Spiral") {
+          // For other formations, use random color
+          const hue = Math.random();
+          const saturation = 0.8;
+          const lightness = 0.5;
+          particleMaterial.color.setHSL(hue, saturation, lightness);
+        }
+        
+        // Assign target positions
+        for (let i = 0; i < numParticles; i++) {
+          if (i < textPoints.length) {
+            // Assign position as target
+            particles[i].targetX = textPoints[i].x;
+            particles[i].targetY = textPoints[i].y;
+            particles[i].targetZ = textPoints[i].z;
+          } else {
+            // Random position around the form
+            const randomPoint = textPoints[Math.floor(Math.random() * textPoints.length)];
+            const randomSpread = currentWord === "❤️" ? 0.5 : 1; // Tighter for heart
+            
+            particles[i].targetX = randomPoint.x + (Math.random() - 0.5) * randomSpread;
+            particles[i].targetY = randomPoint.y + (Math.random() - 0.5) * randomSpread;
+            particles[i].targetZ = randomPoint.z + (Math.random() - 0.5) * randomSpread;
+          }
+        }
+      }, skipExplosion ? 0 : 1000);
+    };
+    
+    // Initialize with Shahar
+    assignTargets(shaharPoints);
+    
+    // Initialize clock for animations
+    const clock = new THREE.Clock();
+    
+    // Animation with enhanced effects
+    const animateParticles = () => {
+      const positions = particleGeometry.attributes.position.array;
+      const time = clock.getElapsedTime();
+      
+      for (let i = 0; i < numParticles; i++) {
+        const i3 = i * 3;
+        const particle = particles[i];
+        
+        // Simple spring physics
+        const dx = particle.targetX - particle.x;
+        const dy = particle.targetY - particle.y;
+        const dz = particle.targetZ - particle.z;
+        
+        particle.vx += dx * 0.01;
+        particle.vy += dy * 0.01;
+        particle.vz += dz * 0.01;
+        
+        // Add some noise for more organic movement
+        if (currentWord === "Spiral") {
+          const noise = Math.sin(time * 3 + i * 0.1) * 0.01;
+          particle.vx += noise;
+          particle.vy += noise;
+        }
+        
+        // Damping
+        particle.vx *= 0.95;
+        particle.vy *= 0.95;
+        particle.vz *= 0.95;
+        
+        // Update position
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.z += particle.vz;
+        
+        // Update geometry
+        positions[i3] = particle.x;
+        positions[i3 + 1] = particle.y;
+        positions[i3 + 2] = particle.z;
+        
+        // Pulsate particle size if in heart formation
+        if (currentWord === "❤️") {
+          const pulseFactor = 1 + 0.2 * Math.sin(time * 2);
+          particleMaterial.size = 0.05 * pulseFactor;
+        } else {
+          particleMaterial.size = 0.05;
+        }
+      }
+      
+      particleGeometry.attributes.position.needsUpdate = true;
+    };
+    
+    // Additional formations
+    const createHeartPoints = () => {
+      const heartPoints = [];
+      const numPoints = 1000;
+      const scale = 3;
+      
+      for (let i = 0; i < numPoints; i++) {
+        // Parametric heart curve
+        const t = (i / numPoints) * Math.PI * 2;
+        const x = scale * 16 * Math.pow(Math.sin(t), 3) / 16;
+        const y = scale * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) / 16;
+        
+        heartPoints.push({ x, y, z: 0 });
+      }
+      
+      // Fill the heart
+      for (let i = 0; i < numPoints; i++) {
+        const r = Math.random() * 0.8;
+        const theta = Math.random() * Math.PI * 2;
+        const x = r * Math.cos(theta) * 3;
+        const y = r * Math.sin(theta) * 3;
+        
+        heartPoints.push({ x, y, z: 0 });
+      }
+      
+      return heartPoints;
+    };
+    
+    const createSpiralPoints = () => {
+      const spiralPoints = [];
+      const numPoints = 2000;
+      const turns = 5;
+      
+      for (let i = 0; i < numPoints; i++) {
+        const t = (i / numPoints) * turns * Math.PI * 2;
+        const radius = 4 * (1 - i/numPoints);
+        const x = radius * Math.cos(t);
+        const y = radius * Math.sin(t);
+        const z = (i / numPoints) * 2 - 1;
+        
+        spiralPoints.push({ x, y, z });
+      }
+      
+      return spiralPoints;
+    };
+    
+    const heartPoints = createHeartPoints();
+    const spiralPoints = createSpiralPoints();
+    
+    // Toggle between words and shapes
+    const toggleFormation = () => {
+      if (morphTimeout) {
+        clearTimeout(morphTimeout);
+      }
+      
+      setCurrentWord(prev => {
+        let nextFormation = "";
+        let targetPoints;
+        
+        if (prev === "Shahar") {
+          nextFormation = "Maoz";
+          targetPoints = maozPoints;
+        } else if (prev === "Maoz") {
+          nextFormation = "❤️";
+          targetPoints = heartPoints;
+        } else if (prev === "❤️") {
+          nextFormation = "Spiral";
+          targetPoints = spiralPoints;
+        } else {
+          nextFormation = "Shahar";
+          targetPoints = shaharPoints;
+        }
+        
+        // Randomize colors for heart and spiral
+        if (nextFormation === "❤️") {
+          particleMaterial.color.setRGB(1, 0.2, 0.3); // Red for heart
+        } else if (nextFormation === "Spiral") {
+          particleMaterial.color.setHSL(Math.random(), 1, 0.5); // Random vivid color
+        } else {
+          particleMaterial.color.setHSL(Math.random(), 0.8, 0.5);
+        }
+        
+        assignTargets(targetPoints);
+        return nextFormation;
+      });
+      
+      if (interactionMode === "automatic") {
+        morphTimeout = setTimeout(toggleFormation, 6000);
+      }
+    };
+    
+    // Start formation toggling after initial form
+    setTimeout(() => {
+      if (interactionMode === "automatic") {
+        toggleFormation();
+      }
+    }, 4000);
+    
+    // Animation loop without post-processing
+    const animate = () => {
+      requestAnimationFrame(animate);
+      
+      // Animate particles
+      animateParticles();
+      
+      // Rotate the entire system based on current formation
+      if (currentWord === "Spiral") {
+        particleSystem.rotation.y += 0.003;
+        particleSystem.rotation.x += 0.001;
+      } else if (currentWord === "❤️") {
+        const time = clock.getElapsedTime();
+        particleSystem.rotation.z = Math.sin(time * 0.5) * 0.2;
+        particleSystem.rotation.y += 0.001;
+      } else {
+        particleSystem.rotation.y += 0.002;
+      }
+      
+      // Standard rendering
+      renderer.render(scene, camera);
+    };
+    
+    animate();
+    
+    // Handle window resize
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth * 0.8, window.innerHeight * 0.8);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (containerRef.current && containerRef.current.contains(renderer.domElement)) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
+      if (morphTimeout) {
+        clearTimeout(morphTimeout);
+      }
+    };
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center w-full h-screen bg-black">
+      <h2 className="text-2xl text-white mb-4">
+        {currentWord === "❤️" ? "Particle Morphing: Heart" : `Particle Morphing Animation: "${currentWord}"`}
+      </h2>
+      <div 
+        ref={containerRef} 
+        className="w-full h-full flex items-center justify-center"
+      />
+      
+      <div className="absolute bottom-4 flex space-x-4">
+        <button 
+          onClick={() => setCurrentWord("Shahar")}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          Shahar
+        </button>
+        <button 
+          onClick={() => setCurrentWord("Maoz")}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+        >
+          Maoz
+        </button>
+        <button 
+          onClick={() => {
+            setCurrentWord("❤️");
+            // Set red color for heart
+            if (particleMaterial) {
+              particleMaterial.color.setRGB(1, 0.2, 0.3);
+            }
+          }}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+        >
+          לב
+        </button>
+        <button 
+          onClick={() => setCurrentWord("Spiral")}
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+        >
+          ספירלה
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default MultiWordParticles;
